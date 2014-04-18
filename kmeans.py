@@ -2,6 +2,7 @@ import Image
 import random
 import numpy
 
+
 class Cluster(object):
 
     def __init__(self):
@@ -30,51 +31,55 @@ class Cluster(object):
 class Kmeans(object):
 
     def __init__(self, image, size=200):
-        self.image = image.resize((size, size))
-        self.pixels = self.image.getdata()
+        self.image = image
+        self.image.thumbnail((size, size))
+        self.pixels = numpy.array(image.getdata(), dtype=numpy.uint8)
 
     def run(self, k):
         self.clusters = [None for i in range(k)]
+        self.oldClusters = None
 
-        randomPixel = random.sample(self.pixels, k)
+        randomPixels = random.sample(self.pixels, k)
 
         for idx in range(k):
             self.clusters[idx] = Cluster()
-            self.clusters[idx].centroid = randomPixel[idx]
+            self.clusters[idx].centroid = randomPixels[idx]
 
-        # oldClusters = None
         iterations = 0
 
-        while iterations < 4:
-            print iterations
+        while self.shouldExit(iterations):
 
             for pixel in self.pixels:
-                shortest = float('Inf')
-                for cluster in self.clusters:
-                    distance = self.calcDistance(cluster.centroid, pixel)
-                    if distance < shortest:
-                        shortest = distance
-                        nearest = cluster
-
-                nearest.addPoint(pixel)
+                self.assignClusters(pixel)
 
             for cluster in self.clusters:
                 cluster.setNewCentroid()
+
             iterations += 1
 
         return [cluster.centroid for cluster in self.clusters]
 
-    def assignClusters(self, clusters, points):
+    def assignClusters(self, pixel):
+        shortest = float('Inf')
+        for cluster in self.clusters:
+            distance = self.calcDistance(cluster.centroid, pixel)
+            if distance < shortest:
+                shortest = distance
+                nearest = cluster
 
-        for point in points:
-            shortest = float('Inf')
-            for cluster in clusters:
-                distance = self.calcDistance(cluster.centroid, point)
-                if distance < shortest:
-                    shortest = distance
-                    nearest = cluster
+        nearest.addPoint(pixel)
 
-            nearest.addPoint(point)
+    def calcDistance(self, a, b):
+
+        result = numpy.sqrt(sum((a - b) ** 2))
+        return result
+
+    def shouldExit(self, iterations):
+
+        if iterations >= 3:
+            return False
+
+        return True
 
     def showImage(self):
         self.image.show()
@@ -87,7 +92,7 @@ class Kmeans(object):
     def showClustering(self):
         localPixels = [None] * len(self.image.getdata())
 
-        for idx, pixel in enumerate(self.image.getdata()):
+        for idx, pixel in enumerate(self.pixels):
                 shortest = float('Inf')
                 for cluster in self.clusters:
                     distance = self.calcDistance(cluster.centroid, pixel)
@@ -97,25 +102,16 @@ class Kmeans(object):
 
                 localPixels[idx] = nearest.centroid
 
-        localPixels = numpy.asarray(localPixels).astype('uint8').reshape((200, 200, 3))
+        w, h = self.image.size
+        localPixels = numpy.asarray(localPixels).astype('uint8').reshape((h, w, 3))
         colourMap = Image.fromarray(localPixels)
         colourMap.show()
 
 
-    def calcDistance(self, in_a, in_b):
-
-        row_a = numpy.array(in_a)
-        row_b = numpy.array(in_b)
-        try:
-            result = numpy.sqrt(sum((row_a - row_b) ** 2))
-        except:
-            import pdb; pdb.set_trace()
-        return result
-
-
 def main():
 
-    image = Image.open("images/P1000590.jpg")
+    image = Image.open("images/spikey_thing.jpg")
+    # image = image.convert(mode="CMYK")
 
     k = Kmeans(image, size=200)
     result = k.run(3)
