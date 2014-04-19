@@ -1,6 +1,7 @@
 import Image
 import random
 import numpy
+import copy
 
 
 class Cluster(object):
@@ -30,24 +31,33 @@ class Cluster(object):
 
 class Kmeans(object):
 
-    def __init__(self, image, size=200):
+    def __init__(self, k=3, max_iterations=5, min_distance=5.0, size=200):
+        self.k = k
+        self.max_iterations = max_iterations
+        self.min_distance = min_distance
+        self.size = (size, size)
+
+    def run(self, image):
         self.image = image
-        self.image.thumbnail((size, size))
+        self.image.thumbnail(self.size)
         self.pixels = numpy.array(image.getdata(), dtype=numpy.uint8)
 
-    def run(self, k):
-        self.clusters = [None for i in range(k)]
+        self.clusters = [None for i in range(self.k)]
         self.oldClusters = None
 
-        randomPixels = random.sample(self.pixels, k)
+        randomPixels = random.sample(self.pixels, self.k)
 
-        for idx in range(k):
+        for idx in range(self.k):
             self.clusters[idx] = Cluster()
             self.clusters[idx].centroid = randomPixels[idx]
 
         iterations = 0
 
-        while self.shouldExit(iterations):
+        while self.shouldExit(iterations) is False:
+
+            self.oldClusters = [cluster.centroid for cluster in self.clusters]
+
+            print iterations
 
             for pixel in self.pixels:
                 self.assignClusters(pixel)
@@ -76,20 +86,35 @@ class Kmeans(object):
 
     def shouldExit(self, iterations):
 
-        if iterations >= 3:
+        if self.oldClusters is None:
+            return False
+
+        for idx in range(self.k):
+            dist = self.calcDistance(
+                numpy.array(self.clusters[idx].centroid),
+                numpy.array(self.oldClusters[idx])
+            )
+            if dist < self.min_distance:
+                return True
+
+        if iterations <= self.max_iterations:
             return False
 
         return True
 
+    # ############################################
+    # The remaining methods are used for debugging
     def showImage(self):
         self.image.show()
 
     def showCentroidColours(self):
+
         for cluster in self.clusters:
             image = Image.new("RGB", (200, 200), cluster.centroid)
             image.show()
 
     def showClustering(self):
+
         localPixels = [None] * len(self.image.getdata())
 
         for idx, pixel in enumerate(self.pixels):
@@ -103,19 +128,19 @@ class Kmeans(object):
                 localPixels[idx] = nearest.centroid
 
         w, h = self.image.size
-        localPixels = numpy.asarray(localPixels).astype('uint8').reshape((h, w, 3))
+        localPixels = numpy.asarray(localPixels)\
+            .astype('uint8')\
+            .reshape((h, w, 3))
+
         colourMap = Image.fromarray(localPixels)
         colourMap.show()
 
 
 def main():
 
-    image = Image.open("images/spikey_thing.jpg")
-    # image = image.convert(mode="CMYK")
+    image = Image.open("images/cows.jpg")
 
-    k = Kmeans(image, size=200)
-    result = k.run(3)
-    print result
+    k = Kmeans()
 
     k.showImage()
     k.showCentroidColours()
