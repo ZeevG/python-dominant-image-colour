@@ -1,7 +1,14 @@
+"""
+Kmeans clustering algorithm for colour detection in images
+
+Initialise a kmeans object and then use the run() method.
+Several debugging methods are available which can help to
+show you the results of the algorithm.
+"""
+
 import Image
 import random
 import numpy
-import copy
 
 
 class Cluster(object):
@@ -141,6 +148,9 @@ def main():
     image = Image.open("images/cows.jpg")
 
     k = Kmeans()
+
+    result = k.run(image)
+    print result
 
     k.showImage()
     k.showCentroidColours()
